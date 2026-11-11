@@ -5,7 +5,9 @@
 
 const COOKIE = "ra_session";
 const SESSION_DAYS = 90;
-const STATUS = ["lager", "reserviert", "ausgegeben"];
+// reparatur = im Lager, noch kaputt · lager = fertig, bereit zur Ausgabe · ausgegeben
+// "Reserviert" ist kein Status, sondern ein eigenes Feld (reserved), das als Störer auf dem Foto erscheint.
+const STATUS = ["reparatur", "lager", "ausgegeben"];
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
 const MAX_PHOTOS = 4;
 
@@ -158,6 +160,14 @@ async function ensureSchema(env) {
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`),
     env.DB.prepare(`CREATE INDEX IF NOT EXISTS bikes_status ON bikes(status)`),
   ]);
+  // Spalte "reserved" nachrüsten; alter Status "reserviert" wird zu "bereit + reserviert"
+  const { results } = await env.DB.prepare("PRAGMA table_info(bikes)").all();
+  if (!results.some((c) => c.name === "reserved")) {
+    await env.DB.batch([
+      env.DB.prepare("ALTER TABLE bikes ADD COLUMN reserved INTEGER NOT NULL DEFAULT 0"),
+      env.DB.prepare("UPDATE bikes SET status = 'lager', reserved = 1 WHERE status = 'reserviert'"),
+    ]);
+  }
   schemaReady = true;
 }
 
@@ -192,6 +202,7 @@ function clean(input, partial) {
     if (!STATUS.includes(input.status)) throw new HttpError(400, "Unbekannter Status.");
     out.status = input.status;
   }
+  if (has("reserved")) out.reserved = input.reserved ? 1 : 0;
   if (has("done_at")) out.done_at = isDate(input.done_at) ? input.done_at : null;
   if (has("out_at")) out.out_at = isDate(input.out_at) ? input.out_at : null;
   return out;
@@ -206,7 +217,7 @@ class HttpError extends Error {
 
 function row(b) {
   if (!b) return b;
-  return { ...b, extras: JSON.parse(b.extras || "[]"), photos: JSON.parse(b.photos || "[]") };
+  return { ...b, reserved: !!b.reserved, extras: JSON.parse(b.extras || "[]"), photos: JSON.parse(b.photos || "[]") };
 }
 
 async function api(request, env, url, role) {
@@ -225,20 +236,21 @@ async function api(request, env, url, role) {
     if (p === "/api/bikes" && m === "POST") {
       const body = await request.json();
       const b = clean(body, false);
-      const done = isDate(body.done_at) ? body.done_at : today();
       const status = STATUS.includes(body.status) ? body.status : "lager";
+      const done = isDate(body.done_at) ? body.done_at : status === "reparatur" ? null : today();
+      const reserved = body.reserved && status !== "ausgegeben" ? 1 : 0;
       const out = status === "ausgegeben" ? (isDate(body.out_at) ? body.out_at : today()) : null;
-      const year = parseInt(done.slice(0, 4), 10);
+      const year = parseInt((done || today()).slice(0, 4), 10);
       const now = new Date().toISOString();
       // Nummer = Jahr + laufende Nummer, in einer Anweisung vergeben (kein Doppelvergeben)
       const created = await env.DB.prepare(
-        `INSERT INTO bikes (year, seq, nr, maker, color, size_lo, size_hi, frame, extras, descr, note, status, done_at, out_at, created_at, updated_at)
+        `INSERT INTO bikes (year, seq, nr, maker, color, size_lo, size_hi, frame, extras, descr, note, status, done_at, out_at, created_at, updated_at, reserved)
          SELECT ?1, COALESCE(MAX(seq), 0) + 1, printf('%02d-%03d', ?1 % 100, COALESCE(MAX(seq), 0) + 1),
-                ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13
+                ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13, ?14
          FROM bikes WHERE year = ?1
          RETURNING *`
       )
-        .bind(year, b.maker, b.color, b.size_lo, b.size_hi, b.frame, b.extras, b.descr, b.note, status, done, out, now)
+        .bind(year, b.maker, b.color, b.size_lo, b.size_hi, b.frame, b.extras, b.descr, b.note, status, done, out, now, reserved)
         .first();
       return json({ bike: row(created) }, 201);
     }
@@ -256,6 +268,9 @@ async function api(request, env, url, role) {
         if (ch.status && ch.status !== cur.status) {
           if (ch.status === "ausgegeben" && !ch.out_at) ch.out_at = today();
           if (ch.status !== "ausgegeben") ch.out_at = null;
+          if (ch.status === "ausgegeben") ch.reserved = 0; // ausgegeben = Reservierung erledigt
+          if (ch.status === "lager" && !cur.done_at && !ch.done_at) ch.done_at = today(); // gerade fertig geworden
+          if (ch.status === "reparatur" && !Object.prototype.hasOwnProperty.call(body, "done_at")) ch.done_at = null;
         }
         const keys = Object.keys(ch);
         if (!keys.length) return json({ bike: row(cur) });
@@ -314,7 +329,7 @@ async function api(request, env, url, role) {
 
     if (p === "/api/export.csv" && m === "GET") {
       const { results } = await env.DB.prepare("SELECT * FROM bikes ORDER BY year, seq").all();
-      const cols = ["nr", "status", "maker", "color", "size_lo", "size_hi", "frame", "extras", "descr", "note", "done_at", "out_at"];
+      const cols = ["nr", "status", "reserved", "maker", "color", "size_lo", "size_hi", "frame", "extras", "descr", "note", "done_at", "out_at"];
       const esc = (v) => {
         const s = v == null ? "" : String(v);
         return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

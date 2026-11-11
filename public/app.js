@@ -7,7 +7,8 @@
   const EXTRAS = ["Scheibenbremse", "Nabendynamo", "Nabenschaltung", "Kettenschaltung", "Gepäckträger", "Korb", "Kindersitz", "Schutzbleche", "Ständer", "Rücktritt", "Licht", "Klingel", "Schloss"];
   const MAKERS = ["Batavus", "Bulls", "Cube", "Diamant", "Gazelle", "Giant", "Hercules", "Kalkhoff", "Kettler", "Pegasus", "Peugeot", "Puky", "Raleigh", "Trek", "Winora"];
   const SIZES = [{ k: "kids", t: "Kinder < 145", lo: 0, hi: 145 }, { k: "s", t: "145–165", lo: 145, hi: 165 }, { k: "m", t: "165–180", lo: 165, hi: 180 }, { k: "l", t: "180+", lo: 180, hi: 999 }];
-  const ST = { lager: "Im Lager", reserviert: "Reserviert", ausgegeben: "Ausgegeben" };
+  const ST = { reparatur: "In Reparatur", lager: "Bereit", ausgegeben: "Ausgegeben" };
+  const ST_ORDER = ["reparatur", "lager", "ausgegeben"];
   const MAX_PHOTOS = 4;
 
   const S = { view: "list", status: "lager", q: "", size: null, frame: null, cur: null, year: new Date().getFullYear(), confirmDel: false, draft: null, toast: "", toastErr: false, busy: false, role: "werkstatt", bikes: [] };
@@ -55,13 +56,15 @@
     <path d="M66 30 L88 30" stroke="currentColor" stroke-width="6"/><circle cx="100" cy="80" r="6" stroke="currentColor" stroke-width="3"/></g></svg>`;
   }
   const thumb = (b) => (b.photos.length ? `<img src="${fotoUrl(b.photos[0])}" alt="" loading="lazy">` : bikeSvg(b.color));
+  // Störer: Rad ist reserviert
+  const stoerer = (b, big) => (b.reserved && b.status !== "ausgegeben" ? `<span class="stoerer${big ? " big" : ""}" title="${esc(b.note || "Reserviert")}">Reser&shy;viert</span>` : "");
 
   /* ---------- Filter ---------- */
   function filtered() {
     const z = SIZES.find((x) => x.k === S.size);
     const words = S.q.toLowerCase().split(/\s+/).filter(Boolean);
     return S.bikes
-      .filter((b) => S.status === "alle" || b.status === S.status)
+      .filter((b) => S.status === "alle" || (S.status === "reserviert" ? b.reserved && b.status !== "ausgegeben" : b.status === S.status))
       .filter((b) => !z || ((b.size_lo || b.size_hi) && (b.size_hi || b.size_lo) > z.lo && (b.size_lo || b.size_hi) < z.hi))
       .filter((b) => !S.frame || b.frame === S.frame)
       .filter((b) => {
@@ -71,6 +74,7 @@
       });
   }
   const count = (st) => S.bikes.filter((b) => b.status === st).length;
+  const countRes = () => S.bikes.filter((b) => b.reserved && b.status !== "ausgegeben").length;
 
   /* ---------- Ansichten ---------- */
   function nav(active) {
@@ -83,12 +87,12 @@
 
   function vList() {
     const list = filtered();
-    const segs = [["lager", "Im Lager"], ["reserviert", "Reserviert"], ["ausgegeben", "Ausgegeben"], ["alle", "Alle"]];
+    const segs = [["lager", "Bereit"], ["reparatur", "Reparatur"], ["reserviert", "Reserviert"], ["ausgegeben", "Ausgegeben"], ["alle", "Alle"]];
     const emptyText = S.bikes.length
       ? "Keine Räder für diese Auswahl.<br>Filter antippen, um sie zu lösen."
       : "Noch keine Räder im Archiv.<br>Mit <b>+ Rad</b> unten legst du das erste an.";
     return `<div class="screen"><div class="top">
-      <h1>Räder <small>${count("lager")} im Lager · ${count("reserviert")} reserviert</small></h1>
+      <h1>Räder <small>${count("lager")} bereit · ${count("reparatur")} in Reparatur<br>${countRes()} reserviert</small></h1>
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         <input id="q" type="search" placeholder="Suchen: Winora, Korb, 26-014 …" value="${esc(S.q)}" aria-label="Räder durchsuchen" autocomplete="off"></div>
       <div class="seg" role="group" aria-label="Status">${segs.map(([k, t]) => `<button data-status="${k}" aria-pressed="${S.status === k}">${t}</button>`).join("")}</div>
@@ -98,7 +102,7 @@
       </div></div>
      <div class="grid">${list.length ? list.slice(0, 200).map((b) => `
        <button class="card" data-open="${b.id}">
-        <div class="thumb">${thumb(b)}<span class="nr">#${esc(b.nr)}</span></div>
+        <div class="thumb">${thumb(b)}<span class="nr">#${esc(b.nr)}</span>${stoerer(b)}</div>
         <h3>${esc(title(b))}</h3>
         <div class="meta"><span>${esc(size(b)) || "Größe ?"}</span><span class="pill st-${b.status}">${ST[b.status]}</span></div>
        </button>`).join("") : `<div class="empty">${emptyText}</div>`}</div>
@@ -112,10 +116,10 @@
     const pics = b.photos.length ? b.photos.map((k, i) => `<div><img src="${fotoUrl(k)}" alt="Foto ${i + 1} von Rad ${esc(b.nr)}"></div>`).join("") : `<div>${bikeSvg(b.color)}</div>`;
     return `<div class="screen">
      <div class="top" style="padding-bottom:12px"><button class="back" data-go="list"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Räder</button></div>
-     <div class="gallery">${pics}</div>
+     <div class="hero-wrap"><div class="gallery">${pics}</div>${stoerer(b, true)}</div>
      ${b.photos.length > 1 ? `<div class="dots">${b.photos.map(() => "<span></span>").join("")}</div>` : ""}
      <div class="pad">
-      <div class="eyebrow">#${esc(b.nr)} · fertig am ${fmt(b.done_at) || "?"}</div>
+      <div class="eyebrow">#${esc(b.nr)} · ${b.status === "reparatur" ? "noch in Reparatur" : "fertig am " + (fmt(b.done_at) || "?")}</div>
       <h2 class="title-xl">${esc(title(b))}</h2>
       <dl class="kv">
        ${row("Hersteller", esc(b.maker))}
@@ -124,13 +128,17 @@
        ${row("Rahmen", esc(b.frame))}
        ${row("Extras", b.extras.length ? `<div class="tags">${b.extras.map((e) => `<span class="tag">${esc(e)}</span>`).join("")}</div>` : "")}
        ${row("Beschreibung", esc(b.descr))}
-       ${b.note || b.status === "reserviert" ? row("Notiz", esc(b.note)) : ""}
+       ${b.note ? row("Notiz", esc(b.note)) : ""}
        ${b.status === "ausgegeben" ? row("Ausgegeben", fmt(b.out_at)) : ""}
       </dl>
       <div class="eyebrow" style="margin-bottom:8px">Status</div>
       <div class="statusbar" role="group" aria-label="Status ändern">
-       ${["lager", "reserviert", "ausgegeben"].map((k) => `<button class="s-${k}" data-setstatus="${k}" aria-pressed="${b.status === k}" ${S.busy ? "disabled" : ""}>${ST[k]}</button>`).join("")}
+       ${ST_ORDER.map((k) => `<button class="s-${k}" data-setstatus="${k}" aria-pressed="${b.status === k}" ${S.busy ? "disabled" : ""}>${ST[k]}</button>`).join("")}
       </div>
+      ${b.status !== "ausgegeben" ? `<div class="reserve">
+       <button class="resbtn" data-reserve aria-pressed="${!!b.reserved}" ${S.busy ? "disabled" : ""}>${b.reserved ? "Reserviert ✓ (antippen zum Aufheben)" : "Reservieren"}</button>
+       ${b.reserved ? `<label class="hint" for="resnote">Für wen oder wann?</label><input id="resnote" type="text" value="${esc(b.note)}" placeholder="z. B. reserviert für Montag" maxlength="300">` : ""}
+      </div>` : ""}
       <div class="row" style="margin-top:16px"><button class="btn btn-ghost" data-edit="${b.id}">Bearbeiten</button>${S.role === "admin" ? `<button class="btn btn-danger" data-del>Löschen</button>` : ""}</div>
       ${S.confirmDel ? `<div class="confirm"><span>Rad #${esc(b.nr)} wirklich löschen? Nur bei Fehleinträgen, sonst fehlt es in der Jahreszählung.</span><div class="row"><button class="btn btn-ghost" data-delno>Abbrechen</button><button class="btn btn-ink" data-delyes>Löschen</button></div></div>` : ""}
       <div style="height:100px"></div>
@@ -138,8 +146,8 @@
   }
 
   function newDraft(b) {
-    if (b) return { id: b.id, nr: b.nr, maker: b.maker || "", color: b.color || "", lo: b.size_lo, hi: b.size_hi, frame: b.frame || "", extras: [...b.extras], descr: b.descr || "", note: b.note || "", done_at: b.done_at || todayISO(), photos: [...b.photos], removed: [], files: [] };
-    return { id: null, nr: "", maker: "", color: "", lo: null, hi: null, frame: "", extras: [], descr: "", note: "", done_at: todayISO(), photos: [], removed: [], files: [] };
+    if (b) return { id: b.id, nr: b.nr, maker: b.maker || "", color: b.color || "", lo: b.size_lo, hi: b.size_hi, frame: b.frame || "", extras: [...b.extras], descr: b.descr || "", note: b.note || "", status: b.status, done_at: b.done_at || todayISO(), photos: [...b.photos], removed: [], files: [] };
+    return { id: null, nr: "", maker: "", color: "", lo: null, hi: null, frame: "", extras: [], descr: "", note: "", status: "lager", done_at: todayISO(), photos: [], removed: [], files: [] };
   }
 
   function vForm() {
@@ -150,6 +158,11 @@
     return `<form class="screen" id="form" style="display:flex;flex-direction:column" novalidate>
      <div class="top"><h1>${d.id ? "Rad bearbeiten" : "Neues Rad"} <small>${d.nr ? "#" + esc(d.nr) : "Nummer kommt beim Speichern"}</small></h1></div>
      <div class="pad" style="padding-top:4px;flex:1">
+      ${d.id ? "" : `<div class="field"><div class="lbl">Zustand</div>
+       <div class="seg" style="margin-top:0" role="group" aria-label="Zustand">
+        <button type="button" data-fstatus="reparatur" aria-pressed="${d.status === "reparatur"}">Noch kaputt</button>
+        <button type="button" data-fstatus="lager" aria-pressed="${d.status === "lager"}">Fertig, bereit</button>
+       </div></div>`}
       <div class="field">
        <div class="lbl">Fotos <span>${nPhotos} von ${MAX_PHOTOS}</span></div>
        <div class="photos">
@@ -180,8 +193,8 @@
        <textarea id="descr" placeholder="Was wurde gemacht, Besonderheiten …" maxlength="2000">${esc(d.descr)}</textarea></div>
       <div class="field"><label for="note">Notiz <span>z. B. „reserviert für Montag“</span></label>
        <input id="note" type="text" value="${esc(d.note)}" maxlength="300"></div>
-      <div class="field" style="border-bottom:0"><label for="done_at">Fertig repariert am</label>
-       <input id="done_at" type="date" value="${esc(d.done_at)}"></div>
+      ${d.status === "reparatur" ? "" : `<div class="field" style="border-bottom:0"><label for="done_at">Fertig repariert am</label>
+       <input id="done_at" type="date" value="${esc(d.done_at)}"></div>`}
      </div>
      <div class="formfoot"><button type="button" class="btn btn-ghost" data-cancel>Abbrechen</button><button type="submit" class="btn btn-lime" style="flex:2" ${S.busy ? "disabled" : ""}>${S.busy ? "Speichert …" : "Speichern"}</button></div>
     </form>`;
@@ -244,7 +257,9 @@
   async function save() {
     readForm();
     const d = S.draft;
-    const data = { maker: d.maker, color: d.color, size_lo: d.lo, size_hi: d.hi, frame: d.frame, extras: d.extras, descr: d.descr, note: d.note, done_at: d.done_at || todayISO() };
+    const data = { maker: d.maker, color: d.color, size_lo: d.lo, size_hi: d.hi, frame: d.frame, extras: d.extras, descr: d.descr, note: d.note };
+    if (d.status !== "reparatur") data.done_at = d.done_at || todayISO();
+    if (!d.id) data.status = d.status;
     S.busy = true; render(true);
     try {
       let bike = d.id ? (await sendJSON(`/api/bikes/${d.id}`, "PATCH", data)).bike : (await sendJSON("/api/bikes", "POST", data)).bike;
@@ -252,7 +267,7 @@
       for (const f of d.files) bike = (await api(`/api/bikes/${bike.id}/fotos`, { method: "POST", headers: { "content-type": "image/jpeg" }, body: f.blob })).bike;
       upsert(bike);
       S.busy = false; S.cur = bike.id; S.draft = null;
-      if (!d.id) { S.status = "lager"; S.q = ""; }
+      if (!d.id) { S.status = d.status; S.q = ""; }
       go("detail");
       toast(d.id ? `#${bike.nr} gespeichert` : `Rad #${bike.nr} angelegt`);
     } catch (e) {
@@ -268,6 +283,21 @@
       upsert(bike); S.busy = false; render(true);
       toast(st === "ausgegeben" ? `#${bike.nr} ausgegeben am ${fmt(bike.out_at)}` : `#${bike.nr}: ${ST[st]}`);
     } catch (e) { S.busy = false; render(true); toast(e.message, true); }
+  }
+
+  async function patch(data, msg) {
+    const b = byId(S.cur); if (!b || S.busy) return;
+    S.busy = true; render(true);
+    try {
+      const { bike } = await sendJSON(`/api/bikes/${b.id}`, "PATCH", data);
+      upsert(bike); S.busy = false; render(true);
+      if (msg) toast(msg(bike));
+    } catch (e) { S.busy = false; render(true); toast(e.message, true); }
+  }
+  function toggleReserve() {
+    const b = byId(S.cur); if (!b) return;
+    patch({ reserved: !b.reserved }, (x) => (x.reserved ? `#${x.nr} reserviert` : `#${x.nr}: Reservierung aufgehoben`))
+      .then(() => { const el = document.getElementById("resnote"); if (el) el.focus(); });
   }
 
   async function del() {
@@ -300,6 +330,7 @@
         render(true);
       } catch (err) { toast("Foto konnte nicht gelesen werden.", true); }
     }
+    if (t.id === "resnote") { const b = byId(S.cur); if (b && t.value.trim() !== (b.note || "")) patch({ note: t.value.trim() }, (x) => `#${x.nr}: Notiz gespeichert`); }
     if (t.id === "nosize") {
       document.getElementById("sizebox").hidden = t.checked;
       if (t.checked) { S.draft.lo = null; S.draft.hi = null; }
@@ -318,6 +349,8 @@
     if (ds.frame) { S.frame = S.frame === ds.frame ? null : ds.frame; render(true); }
     if (ds.open) { S.cur = +ds.open; go("detail"); }
     if (ds.setstatus) setStatus(ds.setstatus);
+    if ("reserve" in ds) toggleReserve();
+    if (ds.fstatus) { readForm(); S.draft.status = ds.fstatus; render(true); }
     if (ds.edit) { S.draft = newDraft(byId(+ds.edit)); go("new"); }
     if ("del" in ds) { S.confirmDel = true; render(true); }
     if ("delno" in ds) { S.confirmDel = false; render(true); }
