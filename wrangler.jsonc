@@ -15,8 +15,8 @@
     {
       "binding": "DB",
       "database_name": "radarchiv",
-      // Nach dem Anlegen der Datenbank im Dashboard hier die ID eintragen (README, Schritt 2)
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      // D1-Datenbank radarchiv, Standort EU
+      "database_id": "58ddffa5-e68d-4c8d-a8fa-09d32dd68323"
     }
   ],
   "r2_buckets": [

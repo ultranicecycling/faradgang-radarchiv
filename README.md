@@ -24,7 +24,7 @@ Die Anmeldung ist ein Cookie für 90 Tage, signiert mit dem Passwort selbst. **W
 
 Im Cloudflare-Dashboard, im selben Konto wie bikepacking.studio:
 
-1. **Datenbank:** Storage & Databases → **D1** → Create → Name `radarchiv`. Die angezeigte **Database ID** kopieren und in `wrangler.jsonc` bei `database_id` eintragen (oder Claude schicken).
+1. **Datenbank:** erledigt (D1 `radarchiv`, Standort EU, ID steht in `wrangler.jsonc`).
 2. **Fotospeicher:** **R2** → Create bucket → Name `radarchiv-fotos`, Standort Europa (EU). R2 muss im Konto einmal aktiviert sein; bis 10 GB ist es kostenlos.
 3. **Worker:** Workers & Pages → Create → **Import a repository** → `faradgang-radarchiv`.
    - Build command: leer lassen
