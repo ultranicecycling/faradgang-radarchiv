@@ -94,6 +94,23 @@
     </nav>`;
   }
 
+  /* ---------- Anleitung: Zum Home-Bildschirm ---------- */
+  const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} } };
+  const SHARE_ICON = `<svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Teilen-Knopf"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11v9h12v-9"/></svg>`;
+  function installSteps() {
+    const ios = `<li><b>iPhone:</b> in <b>Safari</b> öffnen → unten ${SHARE_ICON} <b>Teilen</b> → runterscrollen → <b>„Zum Home-Bildschirm“</b> → Hinzufügen.</li>`;
+    const android = `<li><b>Android:</b> in <b>Chrome</b> öffnen → oben rechts <b>⋮</b> → <b>„Zum Startbildschirm hinzufügen“</b> oder „App installieren“.</li>`;
+    return `<ul class="install-steps">${isIOS ? ios + android : android + ios}</ul>`;
+  }
+  function installBanner() {
+    if (isStandalone() || store.get("ra_install_hide")) return "";
+    return `<div class="install"><div class="install-h"><b>Tipp: Archiv als App auf den Home-Bildschirm legen</b>
+      <button type="button" class="install-x" data-hideinstall aria-label="Tipp ausblenden">✕</button></div>${installSteps()}
+      <span class="hint">Die Anleitung steht auch unter Statistik.</span></div>`;
+  }
+
   function vList() {
     const list = filtered();
     const segs = [["lager", "Bereit"], ["reparatur", "Reparatur"], ["reserviert", "Reserviert"], ["ausgegeben", "Ausgegeben"], ["alle", "Alle"]];
@@ -110,6 +127,7 @@
         ${["Tiefeinstieg", "Damen", "Herren"].map((f) => `<button class="chip" data-frame="${f}" aria-pressed="${S.frame === f}">${f}</button>`).join("")}
         ${kindsSorted().map((k) => `<button class="chip" data-kind="${esc(k)}" aria-pressed="${S.kind === k}">${esc(k)}</button>`).join("")}
       </div></div>
+     ${installBanner()}
      <div class="grid">${list.length ? list.slice(0, 200).map((b) => `
        <button class="card" data-open="${b.id}">
         <div class="thumb">${thumb(b)}<span class="nr">#${esc(b.nr)}</span>${stoerer(b)}</div>
@@ -249,6 +267,8 @@
       <div class="breakdown"><div class="eyebrow">Ausgegeben nach Art</div>${byFrame.length ? "" : `<p class="hint">Noch keine ausgegebenen Räder mit Art.</p>`}
        ${byFrame.map(([f, v]) => `<div class="bd"><span>${f}</span><div class="track"><div class="fill" style="width:${(v / fmax) * 100}%"></div></div><span class="v">${v}</span></div>`).join("")}</div>
       <p class="hint" style="margin-top:20px">Zählt nach „Ausgegeben am“. Das Datum wird beim Statuswechsel automatisch gesetzt.</p>
+      <details class="install install-stats"${isStandalone() ? "" : " open"}><summary><b>Auf den Home-Bildschirm legen</b></summary>${installSteps()}
+       <span class="hint">Danach startet das Archiv wie eine App, ohne Adresszeile.</span></details>
       <div class="links">
        <a class="btn btn-ghost" href="/api/export.csv">Liste als CSV herunterladen</a>
        <a class="btn btn-ghost" href="/logout">Abmelden</a>
@@ -417,6 +437,7 @@
     if (ds.fframe) { readForm(); S.draft.frame = S.draft.frame === ds.fframe ? "" : ds.fframe; render(true); }
     if (ds.extra) { readForm(); const x = S.draft.extras, i = x.indexOf(ds.extra); i < 0 ? x.push(ds.extra) : x.splice(i, 1); render(true); }
     if ("addperson" in ds) addPerson();
+    if ("hideinstall" in ds) { store.set("ra_install_hide", "1"); render(true); }
     if ("editpeople" in ds) { readForm(); S.draft.editPeople = !S.draft.editPeople; render(true); }
     if (ds.rmperson) removePerson(ds.rmperson);
     if ("addextra" in ds) { const v = document.getElementById("ownextra").value.trim(); readForm(); if (v && !S.draft.extras.includes(v)) S.draft.extras.push(v); render(true); }
