@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0d0d0c">
+<title>Anmelden · Rad-Archiv</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/pub/favicon.png">
+<link rel="apple-touch-icon" href="/pub/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rad-Archiv">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="stylesheet" href="/pub/app.css">
+</head>
+<body class="login-body">
+<form class="login" id="f">
+  <div>
+    <img src="/pub/logo.jpg" alt="Faradgang" width="170" height="170" style="display:block;margin-left:-14px">
+    <div class="brand">Rad-Archiv</div>
+    <div class="sub" style="margin-top:6px">Nur für die Werkstatt</div>
+  </div>
+  <div>
+    <label for="pw">Werkstatt-Passwort</label>
+    <input id="pw" type="password" autocomplete="current-password" required autofocus>
+  </div>
+  <button class="btn btn-lime wide" type="submit" id="go">Anmelden</button>
+  <div class="err" id="err" role="alert"></div>
+  <div class="sub">Du bleibst 90 Tage angemeldet. Tipp: Im Browser-Menü „Zum Home-Bildschirm“ wählen, dann ist das Archiv wie eine App auf dem Handy.</div>
+</form>
+<script>
+document.getElementById("f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("go"), err = document.getElementById("err");
+  btn.disabled = true; err.textContent = "";
+  try {
+    const r = await fetch("/api/login", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ passwort: document.getElementById("pw").value }) });
+    if (r.ok) { location.replace("/"); return; }
+    const d = await r.json().catch(() => ({}));
+    err.textContent = d.error || "Anmelden hat nicht geklappt.";
+  } catch (_) { err.textContent = "Keine Verbindung. Bitte nochmal versuchen."; }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>

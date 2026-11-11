@@ -1,0 +1,26 @@
+// Cloudflare: Faradgang Rad-Archiv (internes Werkstatt-Archiv, passwortgeschützt), siehe README.md
+{
+  "name": "faradgang-radarchiv",
+  "compatibility_date": "2025-06-01",
+  "main": "src/worker.js",
+  // Secrets (ARCHIV_PASSWORT, ADMIN_PASSWORT) aus dem Dashboard beim Deploy behalten
+  "keep_vars": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Jede Anfrage läuft zuerst durch den Worker, damit nichts ohne Passwort ausgeliefert wird
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "radarchiv",
+      // Nach dem Anlegen der Datenbank im Dashboard hier die ID eintragen (README, Schritt 2)
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "FOTOS", "bucket_name": "radarchiv-fotos" }
+  ],
+  "observability": { "enabled": true }
+}
