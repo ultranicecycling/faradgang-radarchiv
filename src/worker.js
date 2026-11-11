@@ -162,25 +162,31 @@ async function ensureSchema(env) {
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`),
     env.DB.prepare(`CREATE INDEX IF NOT EXISTS bikes_status ON bikes(status)`),
   ]);
-  // Spalte "reserved" nachrüsten; alter Status "reserviert" wird zu "bereit + reserviert"
+  // Spalten nachrüsten. Mehrere Anfragen können gleichzeitig hier ankommen,
+  // darum ist jeder Schritt so gebaut, dass er doppelt laufen darf.
+  const addColumn = async (sql) => {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (e) {
+      if (!/duplicate column/i.test(String(e && e.message))) throw e;
+    }
+  };
   const { results } = await env.DB.prepare("PRAGMA table_info(bikes)").all();
-  if (!results.some((c) => c.name === "reserved")) {
-    await env.DB.batch([
-      env.DB.prepare("ALTER TABLE bikes ADD COLUMN reserved INTEGER NOT NULL DEFAULT 0"),
-      env.DB.prepare("UPDATE bikes SET status = 'lager', reserved = 1 WHERE status = 'reserviert'"),
-    ]);
+  const has = (n) => results.some((c) => c.name === n);
+  if (!has("reserved")) {
+    // alter Status "reserviert" wird zu "bereit + reserviert"
+    await addColumn("ALTER TABLE bikes ADD COLUMN reserved INTEGER NOT NULL DEFAULT 0");
+    await env.DB.prepare("UPDATE bikes SET status = 'lager', reserved = 1 WHERE status = 'reserviert'").run();
   }
-  if (!results.some((c) => c.name === "kind")) {
+  if (!has("kind")) {
     // Neues Feld "Art" (Radtyp); Kinder und Lastenrad waren vorher Rahmen und wandern dorthin
+    await addColumn("ALTER TABLE bikes ADD COLUMN kind TEXT");
     await env.DB.batch([
-      env.DB.prepare("ALTER TABLE bikes ADD COLUMN kind TEXT"),
       env.DB.prepare("UPDATE bikes SET kind = 'Kinderrad', frame = NULL WHERE frame = 'Kinder'"),
       env.DB.prepare("UPDATE bikes SET kind = 'Lastenrad', frame = NULL WHERE frame = 'Lastenrad'"),
     ]);
   }
-  if (!results.some((c) => c.name === "worker")) {
-    await env.DB.prepare("ALTER TABLE bikes ADD COLUMN worker TEXT").run();
-  }
+  if (!has("worker")) await addColumn("ALTER TABLE bikes ADD COLUMN worker TEXT");
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE)").run();
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM people").first();
   if (!n.n) {

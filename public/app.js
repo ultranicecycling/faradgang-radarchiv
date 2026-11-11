@@ -125,7 +125,7 @@
       <div class="eyebrow">#${esc(b.nr)} · ${b.status === "reparatur" ? "noch in Reparatur" : "fertig am " + (fmt(b.done_at) || "?")}</div>
       <h2 class="title-xl">${esc(title(b))}</h2>
       <dl class="kv">
-       ${row("Schraubt", esc(b.worker))}
+       ${row("Schrauber:in", esc(b.worker))}
        ${row("Hersteller", esc(b.maker))}
        ${row("Farbe", b.color ? `<span style="display:inline-flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:${COLORS[b.color] || "transparent"};border:1px solid var(--line)"></span>${esc(b.color)}</span>` : "")}
        ${row("Größe", esc(size(b)))}
@@ -165,8 +165,8 @@
      <div class="pad" style="padding-top:4px;flex:1">
       ${d.id ? "" : `<div class="field"><div class="lbl">Zustand</div>
        <div class="seg" style="margin-top:0" role="group" aria-label="Zustand">
-        <button type="button" data-fstatus="reparatur" aria-pressed="${d.status === "reparatur"}">Noch kaputt</button>
-        <button type="button" data-fstatus="lager" aria-pressed="${d.status === "lager"}">Fertig, bereit</button>
+        <button type="button" data-fstatus="reparatur" aria-pressed="${d.status === "reparatur"}">Needs Love</button>
+        <button type="button" data-fstatus="lager" aria-pressed="${d.status === "lager"}">Fertig, bereit!</button>
        </div></div>`}
       <div class="field">
        <div class="lbl">Fotos <span>${nPhotos} von ${MAX_PHOTOS}</span></div>
@@ -178,7 +178,7 @@
        </div>
        <span class="hint">Fotos werden vor dem Hochladen verkleinert.</span>
       </div>
-      <div class="field"><label for="worker">Wer schraubt? <span>optional</span></label>
+      <div class="field"><label for="worker">Schrauber:in <span>optional</span></label>
        <select id="worker">
         <option value="">– niemand eingetragen –</option>
         ${[...new Set([...S.people, ...(d.worker ? [d.worker] : [])])].sort((a, b) => a.localeCompare(b, "de")).map((n) => `<option ${d.worker === n ? "selected" : ""}>${esc(n)}</option>`).join("")}

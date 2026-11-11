@@ -4,10 +4,10 @@ Internes Archiv der fertig reparierten Räder der Faradgang-Werkstatt. Nicht öf
 
 - Räder mit Foto(s) anlegen: Hersteller, Farbe, Größe (Körpergröße von–bis), Art (Stadtrad, Trekking, Rennrad, MTB, …), Rahmen (Herren, Damen, Tiefeinstieg), Extras, Beschreibung, Notiz. Jedes Feld darf leer bleiben.
 - Jedes Rad bekommt automatisch eine Nummer (`26-014` = 14. Rad aus 2026), die man auf einen Anhänger am Rad schreiben kann.
-- Status mit einem Tipp: **In Reparatur** (im Lager, noch kaputt), **Bereit** (fertig für die Ausgabe), **Ausgegeben**. Das Fertig- und Ausgabedatum wird automatisch gesetzt.
+- Status mit einem Tipp: **In Reparatur** (im Formular „Needs Love“, im Lager, noch kaputt), **Bereit** (fertig für die Ausgabe), **Ausgegeben**. Das Fertig- und Ausgabedatum wird automatisch gesetzt.
 - **Reserviert** ist ein eigener Knopf mit Notiz (z. B. „für Montag“) und erscheint als Störer auf dem Foto. Bei der Ausgabe verschwindet er automatisch.
 - Liste mit Suche und Filtern (Status, Größe, Rahmen), Statistik pro Jahr und Monat, Export als CSV.
-- „Wer schraubt?“: Auswahl aus der Namensliste der Werkstatt, neue Namen direkt im Formular hinzufügen.
+- „Schrauber:in“: Auswahl aus der Namensliste der Werkstatt, neue Namen direkt im Formular hinzufügen.
 - Zwei Passwörter: **Werkstatt** (anlegen, ändern, Status) und **Admin** (zusätzlich löschen).
 
 ## Aufbau
