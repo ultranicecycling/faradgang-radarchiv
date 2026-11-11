@@ -11,7 +11,9 @@ const STATUS = ["reparatur", "lager", "ausgegeben"];
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
 const MAX_PHOTOS = 4;
 // Startliste für "Wer schraubt?" (wird nur beim allerersten Mal angelegt, danach in der App erweiterbar)
-const START_NAMES = ["Alex", "Amin L", "Chris (Max)", "Daniel Winter", "Georg B.", "H", "Hami", "Hansi", "Johanna", "Kristjan P", "Lars Attacks", "Levin", "Lina", "Malte Kisd", "Marie", "Marieke", "Moritz", "Norman", "Paul", "Resa", "Rupert Turbo"];
+const START_NAMES = ["Alex", "Amin", "Chris", "Daniel", "Georg B.", "H", "Hami", "Hansi", "Johanna", "Kristjan", "Lars", "Levin", "Lina", "Malte", "Marie", "Marieke", "Moritz", "Norman", "Paul", "Resa", "Rupert"];
+// Umbenennungen (alt → neu), gelten auch für schon eingetragene Räder. Darf beliebig oft laufen.
+const RENAME = [["Lars Attacks", "Lars"], ["Chris (Max)", "Chris"], ["Malte Kisd", "Malte"], ["Rupert Turbo", "Rupert"], ["Daniel Winter", "Daniel"], ["Amin L", "Amin"], ["Kristjan P", "Kristjan"]];
 
 // Ohne Login erreichbar: Login-Seite, Schriften, Logo, Icons, Manifest
 const PUBLIC_PATHS = [/^\/login$/, /^\/pub\//, /^\/manifest\.webmanifest$/, /^\/robots\.txt$/, /^\/api\/login$/];
@@ -192,6 +194,11 @@ async function ensureSchema(env) {
   if (!n.n) {
     await env.DB.batch(START_NAMES.map((name) => env.DB.prepare("INSERT OR IGNORE INTO people (name) VALUES (?)").bind(name)));
   }
+  await env.DB.batch(RENAME.flatMap(([a, b]) => [
+    env.DB.prepare("UPDATE OR IGNORE people SET name = ? WHERE name = ?").bind(b, a),
+    env.DB.prepare("DELETE FROM people WHERE name = ?").bind(a),
+    env.DB.prepare("UPDATE bikes SET worker = ? WHERE worker = ?").bind(b, a),
+  ]));
   schemaReady = true;
 }
 
