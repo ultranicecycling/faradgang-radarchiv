@@ -181,7 +181,7 @@
         ${d.photos.map((k) => `<div class="ph"><img src="${fotoUrl(k)}" alt=""><button type="button" data-rmphoto="${esc(k)}" aria-label="Foto entfernen">×</button></div>`).join("")}
         ${d.files.map((f, i) => `<div class="ph"><img src="${f.url}" alt=""><button type="button" data-rmfile="${i}" aria-label="Foto entfernen">×</button></div>`).join("")}
         ${canAdd ? `<div class="addphoto ${nPhotos ? "" : "solo"}"><div class="cam"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="4"/></svg><b>${nPhotos ? "Noch ein Foto" : "Foto aufnehmen"}</b><span>oder aus der Galerie</span></div>
-          <input id="photo" type="file" accept="image/*" ${nPhotos ? "" : 'capture="environment"'} aria-label="Foto hinzufügen"></div>` : ""}
+          <input id="photo" type="file" accept="image/*" multiple aria-label="Foto aufnehmen oder aus der Mediathek wählen"></div>` : ""}
        </div>
        <span class="hint">Fotos werden vor dem Hochladen verkleinert.</span>
       </div>
@@ -368,13 +368,17 @@
   });
   app.addEventListener("change", async (e) => {
     const t = e.target;
-    if (t.id === "photo" && t.files && t.files[0]) {
+    if (t.id === "photo" && t.files && t.files.length) {
       readForm();
-      try {
-        const blob = await shrink(t.files[0]);
-        S.draft.files.push({ blob, url: URL.createObjectURL(blob) });
-        render(true);
-      } catch (err) { toast("Foto konnte nicht gelesen werden.", true); }
+      const d = S.draft, free = MAX_PHOTOS - d.photos.length - d.files.length;
+      const picked = [...t.files].slice(0, Math.max(0, free));
+      let bad = 0;
+      for (const f of picked) {
+        try { const blob = await shrink(f); d.files.push({ blob, url: URL.createObjectURL(blob) }); } catch (err) { bad++; }
+      }
+      render(true);
+      if (bad) toast(bad === 1 ? "Ein Foto konnte nicht gelesen werden." : `${bad} Fotos konnten nicht gelesen werden.`, true);
+      else if (t.files.length > picked.length) toast(`Höchstens ${MAX_PHOTOS} Fotos pro Rad, der Rest wurde weggelassen.`, true);
     }
     if (t.id === "resnote") { const b = byId(S.cur); if (b && t.value.trim() !== (b.note || "")) patch({ note: t.value.trim() }, (x) => `#${x.nr}: Notiz gespeichert`); }
     if (t.id === "worker") {
