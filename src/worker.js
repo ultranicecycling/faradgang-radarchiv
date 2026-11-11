@@ -267,7 +267,6 @@ async function api(request, env, url, role) {
     }
     mmPeople = p.match(/^\/api\/people\/(.+)$/);
     if (mmPeople && m === "DELETE") {
-      if (role !== "admin") throw new HttpError(403, "Namen entfernen dürfen nur Admins.");
       await env.DB.prepare("DELETE FROM people WHERE name = ?").bind(decodeURIComponent(mmPeople[1])).run();
       return json({ ok: true });
     }

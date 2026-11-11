@@ -3,9 +3,11 @@
   "use strict";
 
   const COLORS = { "Schwarz": "#1b1b1b", "Weiß": "#f2f2f2", "Grau": "#8d8f92", "Silber": "#c5c8cc", "Rot": "#d33a2c", "Blau": "#2f5fd0", "Grün": "#2f8a4b", "Gelb": "#f3c623", "Orange": "#ee7a22", "Lila": "#7b4bc4", "Pink": "#ec6aa6", "Braun": "#7a5134", "Türkis": "#26a6a0", "Mint": "#9fdcc4" };
-  const KINDS = ["Stadtrad", "Hollandrad", "Trekkingrad", "Rennrad", "Gravel", "MTB", "Kinderrad", "Jugendrad", "Lastenrad", "Klapprad", "BMX", "Fixie / Singlespeed", "E-Bike"];
+  // Grundreihenfolge = was in der Werkstatt vermutlich am häufigsten vorkommt.
+  // Sobald Räder eingetragen sind, rückt nach vorn, was am meisten benutzt wird.
+  const KINDS = ["Stadtrad", "Trekkingrad", "Hollandrad", "Kinderrad", "Jugendrad", "MTB", "Rennrad", "Fixie / Singlespeed", "Klapprad", "Lastenrad", "Gravel", "BMX", "E-Bike"];
   const FRAMES = ["Herren", "Damen", "Tiefeinstieg"];
-  const EXTRAS = ["Scheibenbremse", "Nabendynamo", "Nabenschaltung", "Kettenschaltung", "Gepäckträger", "Korb", "Kindersitz", "Schutzbleche", "Ständer", "Rücktritt", "Licht", "Klingel", "Schloss"];
+  const EXTRAS = ["Gepäckträger", "Ständer", "Licht", "Schutzbleche", "Klingel", "Kettenschaltung", "Nabenschaltung", "Rücktritt", "Nabendynamo", "Korb", "Schloss", "Kindersitz", "Scheibenbremse"];
   const MAKERS = ["Batavus", "Bulls", "Cube", "Diamant", "Gazelle", "Giant", "Hercules", "Kalkhoff", "Kettler", "Pegasus", "Peugeot", "Puky", "Raleigh", "Trek", "Winora"];
   const SIZES = [{ k: "kids", t: "Kinder < 145", lo: 0, hi: 145 }, { k: "s", t: "145–165", lo: 145, hi: 165 }, { k: "m", t: "165–180", lo: 165, hi: 180 }, { k: "l", t: "180+", lo: 180, hi: 999 }];
   const ST = { reparatur: "In Reparatur", lager: "Bereit", ausgegeben: "Ausgegeben" };
@@ -24,7 +26,12 @@
   const fotoUrl = (k) => "/foto/" + k.split("/").map(encodeURIComponent).join("/");
   const byId = (id) => S.bikes.find((b) => b.id === id);
   const makers = () => [...new Set([...MAKERS, ...S.bikes.map((b) => b.maker).filter(Boolean)])].sort((a, b) => a.localeCompare(b, "de"));
-  const extrasAll = () => [...new Set([...EXTRAS, ...S.bikes.flatMap((b) => b.extras)])];
+  const byUse = (list, countOf) => {
+    const n = {}; list.forEach((x) => (n[x] = 0)); S.bikes.forEach((b) => countOf(b).forEach((x) => { if (x in n) n[x]++; }));
+    return list.map((x, i) => [x, i]).sort((a, b) => n[b[0]] - n[a[0]] || a[1] - b[1]).map((x) => x[0]);
+  };
+  const extrasAll = () => byUse([...new Set([...EXTRAS, ...S.bikes.flatMap((b) => b.extras)])], (b) => b.extras);
+  const kindsSorted = () => byUse(KINDS, (b) => (b.kind ? [b.kind] : []));
 
   async function api(path, opts = {}) {
     const r = await fetch(path, { credentials: "same-origin", ...opts });
@@ -101,7 +108,7 @@
       <div class="chips" aria-label="Filter">
         ${SIZES.map((z) => `<button class="chip" data-size="${z.k}" aria-pressed="${S.size === z.k}">${z.t}</button>`).join("")}
         ${["Tiefeinstieg", "Damen", "Herren"].map((f) => `<button class="chip" data-frame="${f}" aria-pressed="${S.frame === f}">${f}</button>`).join("")}
-        ${KINDS.map((k) => `<button class="chip" data-kind="${esc(k)}" aria-pressed="${S.kind === k}">${esc(k)}</button>`).join("")}
+        ${kindsSorted().map((k) => `<button class="chip" data-kind="${esc(k)}" aria-pressed="${S.kind === k}">${esc(k)}</button>`).join("")}
       </div></div>
      <div class="grid">${list.length ? list.slice(0, 200).map((b) => `
        <button class="card" data-open="${b.id}">
@@ -185,6 +192,9 @@
         <option value="__neu">+ Neuen Namen hinzufügen …</option>
        </select>
        ${d.addingPerson ? `<div class="addown"><input id="newperson" type="text" placeholder="Name" maxlength="60" autocomplete="off"><button type="button" data-addperson>Hinzufügen</button></div>` : ""}
+       <button type="button" class="linkbtn" data-editpeople>${d.editPeople ? "Fertig mit Namen" : "Namen bearbeiten"}</button>
+       ${d.editPeople ? `<div class="people-edit">${S.people.length ? S.people.map((n) => `<span class="pchip">${esc(n)}<button type="button" data-rmperson="${esc(n)}" aria-label="${esc(n)} aus der Liste nehmen">✕</button></span>`).join("") : '<span class="hint">Keine Namen in der Liste.</span>'}</div>
+       <span class="hint">✕ nimmt den Namen nur aus der Auswahl. Bei Rädern, die schon eingetragen sind, bleibt er stehen.</span>` : ""}
       </div>
       <div class="field"><label for="maker">Hersteller <span>optional</span></label>
        <input id="maker" type="text" list="makers" value="${esc(d.maker)}" placeholder="z. B. Winora" autocomplete="off" maxlength="60">
@@ -198,7 +208,7 @@
         <label class="hint" for="hi">bis</label><input id="hi" type="range" min="90" max="210" step="1" value="${d.hi || 175}">
        </div></div>
       <div class="field"><div class="lbl">Art <span>optional</span></div>
-       <div class="wrapchips">${KINDS.map((k) => `<button type="button" class="chip" data-fkind="${esc(k)}" aria-pressed="${d.kind === k}">${esc(k)}</button>`).join("")}</div></div>
+       <div class="wrapchips">${kindsSorted().map((k) => `<button type="button" class="chip" data-fkind="${esc(k)}" aria-pressed="${d.kind === k}">${esc(k)}</button>`).join("")}</div></div>
       <div class="field"><div class="lbl">Rahmen <span>optional</span></div>
        <div class="wrapchips">${FRAMES.map((f) => `<button type="button" class="chip" data-fframe="${f}" aria-pressed="${d.frame === f}">${f}</button>`).join("")}</div></div>
       <div class="field"><div class="lbl">Extras <span>${d.extras.length || "keine"}</span></div>
@@ -327,6 +337,15 @@
     } catch (e) { toast(e.message, true); }
   }
 
+  async function removePerson(name) {
+    readForm();
+    try {
+      await sendJSON("/api/people/" + encodeURIComponent(name), "DELETE");
+      S.people = S.people.filter((n) => n !== name);
+      render(true); toast(`${name} entfernt`);
+    } catch (e) { toast(e.message, true); }
+  }
+
   async function del() {
     const b = byId(S.cur); if (!b) return;
     try {
@@ -394,6 +413,8 @@
     if (ds.fframe) { readForm(); S.draft.frame = S.draft.frame === ds.fframe ? "" : ds.fframe; render(true); }
     if (ds.extra) { readForm(); const x = S.draft.extras, i = x.indexOf(ds.extra); i < 0 ? x.push(ds.extra) : x.splice(i, 1); render(true); }
     if ("addperson" in ds) addPerson();
+    if ("editpeople" in ds) { readForm(); S.draft.editPeople = !S.draft.editPeople; render(true); }
+    if (ds.rmperson) removePerson(ds.rmperson);
     if ("addextra" in ds) { const v = document.getElementById("ownextra").value.trim(); readForm(); if (v && !S.draft.extras.includes(v)) S.draft.extras.push(v); render(true); }
     if (ds.rmphoto) { readForm(); S.draft.photos = S.draft.photos.filter((k) => k !== ds.rmphoto); S.draft.removed.push(ds.rmphoto); render(true); }
     if (ds.rmfile) { readForm(); S.draft.files.splice(+ds.rmfile, 1); render(true); }
