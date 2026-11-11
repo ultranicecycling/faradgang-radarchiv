@@ -2,7 +2,7 @@
 
 Internes Archiv der fertig reparierten Räder der Faradgang-Werkstatt. Nicht öffentlich, mit Passwort geschützt, fürs Handy gemacht.
 
-- Räder mit Foto(s) anlegen: Hersteller, Farbe, Größe (Körpergröße von–bis), Rahmen, Extras, Beschreibung, Notiz. Jedes Feld darf leer bleiben.
+- Räder mit Foto(s) anlegen: Hersteller, Farbe, Größe (Körpergröße von–bis), Art (Stadtrad, Trekking, Rennrad, MTB, …), Rahmen (Herren, Damen, Tiefeinstieg), Extras, Beschreibung, Notiz. Jedes Feld darf leer bleiben.
 - Jedes Rad bekommt automatisch eine Nummer (`26-014` = 14. Rad aus 2026), die man auf einen Anhänger am Rad schreiben kann.
 - Status mit einem Tipp: **In Reparatur** (im Lager, noch kaputt), **Bereit** (fertig für die Ausgabe), **Ausgegeben**. Das Fertig- und Ausgabedatum wird automatisch gesetzt.
 - **Reserviert** ist ein eigener Knopf mit Notiz (z. B. „für Montag“) und erscheint als Störer auf dem Foto. Bei der Ausgabe verschwindet er automatisch.

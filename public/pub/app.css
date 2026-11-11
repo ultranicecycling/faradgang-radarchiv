@@ -156,7 +156,7 @@ body.login-body{background:var(--black)}
 .months span{text-align:center;font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
 .yearsel{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .breakdown{margin-top:22px;display:flex;flex-direction:column;gap:8px}
-.bd{display:grid;grid-template-columns:96px 1fr 30px;gap:10px;align-items:center;font-size:13px}
+.bd{display:grid;grid-template-columns:minmax(96px,auto) 1fr 30px;gap:10px;align-items:center;font-size:13px}
 .bd .track{height:10px;background:var(--soft);border-radius:5px;overflow:hidden}
 .bd .fill{height:100%;background:var(--ink)}
 .bd .v{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}

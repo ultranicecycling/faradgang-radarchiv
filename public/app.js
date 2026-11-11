@@ -3,7 +3,8 @@
   "use strict";
 
   const COLORS = { "Schwarz": "#1b1b1b", "Weiß": "#f2f2f2", "Grau": "#8d8f92", "Silber": "#c5c8cc", "Rot": "#d33a2c", "Blau": "#2f5fd0", "Grün": "#2f8a4b", "Gelb": "#f3c623", "Orange": "#ee7a22", "Lila": "#7b4bc4", "Pink": "#ec6aa6", "Braun": "#7a5134", "Türkis": "#26a6a0", "Mint": "#9fdcc4" };
-  const FRAMES = ["Herren", "Damen", "Tiefeinstieg", "Kinder", "Lastenrad"];
+  const KINDS = ["Stadtrad", "Hollandrad", "Trekkingrad", "Rennrad", "Gravel", "MTB", "Kinderrad", "Jugendrad", "Lastenrad", "Klapprad", "BMX", "Fixie / Singlespeed", "E-Bike"];
+  const FRAMES = ["Herren", "Damen", "Tiefeinstieg"];
   const EXTRAS = ["Scheibenbremse", "Nabendynamo", "Nabenschaltung", "Kettenschaltung", "Gepäckträger", "Korb", "Kindersitz", "Schutzbleche", "Ständer", "Rücktritt", "Licht", "Klingel", "Schloss"];
   const MAKERS = ["Batavus", "Bulls", "Cube", "Diamant", "Gazelle", "Giant", "Hercules", "Kalkhoff", "Kettler", "Pegasus", "Peugeot", "Puky", "Raleigh", "Trek", "Winora"];
   const SIZES = [{ k: "kids", t: "Kinder < 145", lo: 0, hi: 145 }, { k: "s", t: "145–165", lo: 145, hi: 165 }, { k: "m", t: "165–180", lo: 165, hi: 180 }, { k: "l", t: "180+", lo: 180, hi: 999 }];
@@ -11,7 +12,7 @@
   const ST_ORDER = ["reparatur", "lager", "ausgegeben"];
   const MAX_PHOTOS = 4;
 
-  const S = { view: "list", status: "lager", q: "", size: null, frame: null, cur: null, year: new Date().getFullYear(), confirmDel: false, draft: null, toast: "", toastErr: false, busy: false, role: "werkstatt", bikes: [], people: [] };
+  const S = { view: "list", status: "lager", q: "", size: null, frame: null, kind: null, cur: null, year: new Date().getFullYear(), confirmDel: false, draft: null, toast: "", toastErr: false, busy: false, role: "werkstatt", bikes: [], people: [] };
   const app = document.getElementById("app");
 
   /* ---------- Hilfen ---------- */
@@ -67,9 +68,10 @@
       .filter((b) => S.status === "alle" || (S.status === "reserviert" ? b.reserved && b.status !== "ausgegeben" : b.status === S.status))
       .filter((b) => !z || ((b.size_lo || b.size_hi) && (b.size_hi || b.size_lo) > z.lo && (b.size_lo || b.size_hi) < z.hi))
       .filter((b) => !S.frame || b.frame === S.frame)
+      .filter((b) => !S.kind || b.kind === S.kind)
       .filter((b) => {
         if (!words.length) return true;
-        const t = [b.nr, b.worker, b.maker, b.color, b.frame, b.descr, b.note, ...b.extras, size(b)].join(" ").toLowerCase();
+        const t = [b.nr, b.worker, b.kind, b.maker, b.color, b.frame, b.descr, b.note, ...b.extras, size(b)].join(" ").toLowerCase();
         return words.every((w) => t.includes(w));
       });
   }
@@ -98,7 +100,8 @@
       <div class="seg" role="group" aria-label="Status">${segs.map(([k, t]) => `<button data-status="${k}" aria-pressed="${S.status === k}">${t}</button>`).join("")}</div>
       <div class="chips" aria-label="Filter">
         ${SIZES.map((z) => `<button class="chip" data-size="${z.k}" aria-pressed="${S.size === z.k}">${z.t}</button>`).join("")}
-        ${["Tiefeinstieg", "Damen", "Herren", "Kinder", "Lastenrad"].map((f) => `<button class="chip" data-frame="${f}" aria-pressed="${S.frame === f}">${f}</button>`).join("")}
+        ${["Tiefeinstieg", "Damen", "Herren"].map((f) => `<button class="chip" data-frame="${f}" aria-pressed="${S.frame === f}">${f}</button>`).join("")}
+        ${KINDS.map((k) => `<button class="chip" data-kind="${esc(k)}" aria-pressed="${S.kind === k}">${esc(k)}</button>`).join("")}
       </div></div>
      <div class="grid">${list.length ? list.slice(0, 200).map((b) => `
        <button class="card" data-open="${b.id}">
@@ -126,6 +129,7 @@
        ${row("Hersteller", esc(b.maker))}
        ${row("Farbe", b.color ? `<span style="display:inline-flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:${COLORS[b.color] || "transparent"};border:1px solid var(--line)"></span>${esc(b.color)}</span>` : "")}
        ${row("Größe", esc(size(b)))}
+       ${row("Art", esc(b.kind))}
        ${row("Rahmen", esc(b.frame))}
        ${row("Extras", b.extras.length ? `<div class="tags">${b.extras.map((e) => `<span class="tag">${esc(e)}</span>`).join("")}</div>` : "")}
        ${row("Beschreibung", esc(b.descr))}
@@ -147,8 +151,8 @@
   }
 
   function newDraft(b) {
-    if (b) return { id: b.id, nr: b.nr, maker: b.maker || "", color: b.color || "", lo: b.size_lo, hi: b.size_hi, frame: b.frame || "", worker: b.worker || "", extras: [...b.extras], descr: b.descr || "", note: b.note || "", status: b.status, done_at: b.done_at || todayISO(), photos: [...b.photos], removed: [], files: [] };
-    return { id: null, nr: "", maker: "", color: "", lo: null, hi: null, frame: "", worker: "", extras: [], descr: "", note: "", status: "lager", done_at: todayISO(), photos: [], removed: [], files: [] };
+    if (b) return { id: b.id, nr: b.nr, maker: b.maker || "", color: b.color || "", lo: b.size_lo, hi: b.size_hi, frame: b.frame || "", kind: b.kind || "", worker: b.worker || "", extras: [...b.extras], descr: b.descr || "", note: b.note || "", status: b.status, done_at: b.done_at || todayISO(), photos: [...b.photos], removed: [], files: [] };
+    return { id: null, nr: "", maker: "", color: "", lo: null, hi: null, frame: "", kind: "", worker: "", extras: [], descr: "", note: "", status: "lager", done_at: todayISO(), photos: [], removed: [], files: [] };
   }
 
   function vForm() {
@@ -193,6 +197,8 @@
         <label class="hint" for="lo">von</label><input id="lo" type="range" min="90" max="200" step="1" value="${d.lo || 165}">
         <label class="hint" for="hi">bis</label><input id="hi" type="range" min="90" max="210" step="1" value="${d.hi || 175}">
        </div></div>
+      <div class="field"><div class="lbl">Art <span>optional</span></div>
+       <div class="wrapchips">${KINDS.map((k) => `<button type="button" class="chip" data-fkind="${esc(k)}" aria-pressed="${d.kind === k}">${esc(k)}</button>`).join("")}</div></div>
       <div class="field"><div class="lbl">Rahmen <span>optional</span></div>
        <div class="wrapchips">${FRAMES.map((f) => `<button type="button" class="chip" data-fframe="${f}" aria-pressed="${d.frame === f}">${f}</button>`).join("")}</div></div>
       <div class="field"><div class="lbl">Extras <span>${d.extras.length || "keine"}</span></div>
@@ -217,7 +223,7 @@
     const max = Math.max(...per, 1);
     const now = new Date();
     const curM = y === now.getFullYear() ? now.getMonth() + 1 : y < now.getFullYear() ? 12 : 0;
-    const byFrame = FRAMES.map((f) => [f, out.filter((b) => b.frame === f).length]);
+    const byFrame = KINDS.map((f) => [f, out.filter((b) => b.kind === f).length]).filter((x) => x[1]);
     const fmax = Math.max(...byFrame.map((x) => x[1]), 1);
     const years = [...new Set([now.getFullYear(), ...S.bikes.map((b) => +(b.out_at || b.done_at || "").slice(0, 4)).filter(Boolean)])].sort((a, b) => b - a);
     return `<div class="screen"><div class="top"><h1>Statistik</h1>
@@ -230,7 +236,7 @@
       <div class="chart"><div class="eyebrow">Ausgegeben pro Monat</div>
        <div class="bars">${per.map((v, i) => `<div class="bar ${i + 1 > curM ? "future" : ""}" style="height:${Math.max(2, (v / max) * 100)}%">${i + 1 <= curM ? `<span>${v}</span>` : ""}</div>`).join("")}</div>
        <div class="months">${["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"].map((m) => `<span>${m}</span>`).join("")}</div></div>
-      <div class="breakdown"><div class="eyebrow">Ausgegeben nach Rahmen</div>
+      <div class="breakdown"><div class="eyebrow">Ausgegeben nach Art</div>${byFrame.length ? "" : `<p class="hint">Noch keine ausgegebenen Räder mit Art.</p>`}
        ${byFrame.map(([f, v]) => `<div class="bd"><span>${f}</span><div class="track"><div class="fill" style="width:${(v / fmax) * 100}%"></div></div><span class="v">${v}</span></div>`).join("")}</div>
       <p class="hint" style="margin-top:20px">Zählt nach „Ausgegeben am“. Das Datum wird beim Statuswechsel automatisch gesetzt.</p>
       <div class="links">
@@ -266,7 +272,7 @@
   async function save() {
     readForm();
     const d = S.draft;
-    const data = { worker: d.worker, maker: d.maker, color: d.color, size_lo: d.lo, size_hi: d.hi, frame: d.frame, extras: d.extras, descr: d.descr, note: d.note };
+    const data = { worker: d.worker, maker: d.maker, color: d.color, size_lo: d.lo, size_hi: d.hi, frame: d.frame, kind: d.kind, extras: d.extras, descr: d.descr, note: d.note };
     if (d.status !== "reparatur") data.done_at = d.done_at || todayISO();
     if (!d.id) data.status = d.status;
     S.busy = true; render(true);
@@ -383,6 +389,8 @@
     if ("delno" in ds) { S.confirmDel = false; render(true); }
     if ("delyes" in ds) del();
     if (ds.color) { readForm(); S.draft.color = S.draft.color === ds.color ? "" : ds.color; render(true); }
+    if (ds.kind) { S.kind = S.kind === ds.kind ? null : ds.kind; render(true); }
+    if (ds.fkind) { readForm(); S.draft.kind = S.draft.kind === ds.fkind ? "" : ds.fkind; render(true); }
     if (ds.fframe) { readForm(); S.draft.frame = S.draft.frame === ds.fframe ? "" : ds.fframe; render(true); }
     if (ds.extra) { readForm(); const x = S.draft.extras, i = x.indexOf(ds.extra); i < 0 ? x.push(ds.extra) : x.splice(i, 1); render(true); }
     if ("addperson" in ds) addPerson();

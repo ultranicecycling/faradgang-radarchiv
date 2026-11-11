@@ -170,6 +170,14 @@ async function ensureSchema(env) {
       env.DB.prepare("UPDATE bikes SET status = 'lager', reserved = 1 WHERE status = 'reserviert'"),
     ]);
   }
+  if (!results.some((c) => c.name === "kind")) {
+    // Neues Feld "Art" (Radtyp); Kinder und Lastenrad waren vorher Rahmen und wandern dorthin
+    await env.DB.batch([
+      env.DB.prepare("ALTER TABLE bikes ADD COLUMN kind TEXT"),
+      env.DB.prepare("UPDATE bikes SET kind = 'Kinderrad', frame = NULL WHERE frame = 'Kinder'"),
+      env.DB.prepare("UPDATE bikes SET kind = 'Lastenrad', frame = NULL WHERE frame = 'Lastenrad'"),
+    ]);
+  }
   if (!results.some((c) => c.name === "worker")) {
     await env.DB.prepare("ALTER TABLE bikes ADD COLUMN worker TEXT").run();
   }
@@ -196,6 +204,7 @@ function clean(input, partial) {
   if (!partial || has("maker")) out.maker = clip(input.maker, 60);
   if (!partial || has("color")) out.color = clip(input.color, 30);
   if (!partial || has("frame")) out.frame = clip(input.frame, 30);
+  if (!partial || has("kind")) out.kind = clip(input.kind, 30);
   if (!partial || has("worker")) out.worker = clip(input.worker, 60);
   if (!partial || has("descr")) out.descr = clip(input.descr, 2000);
   if (!partial || has("note")) out.note = clip(input.note, 300);
@@ -275,13 +284,13 @@ async function api(request, env, url, role) {
       const now = new Date().toISOString();
       // Nummer = Jahr + laufende Nummer, in einer Anweisung vergeben (kein Doppelvergeben)
       const created = await env.DB.prepare(
-        `INSERT INTO bikes (year, seq, nr, maker, color, size_lo, size_hi, frame, extras, descr, note, status, done_at, out_at, created_at, updated_at, reserved, worker)
+        `INSERT INTO bikes (year, seq, nr, maker, color, size_lo, size_hi, frame, extras, descr, note, status, done_at, out_at, created_at, updated_at, reserved, worker, kind)
          SELECT ?1, COALESCE(MAX(seq), 0) + 1, printf('%02d-%03d', ?1 % 100, COALESCE(MAX(seq), 0) + 1),
-                ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13, ?14, ?15
+                ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13, ?14, ?15, ?16
          FROM bikes WHERE year = ?1
          RETURNING *`
       )
-        .bind(year, b.maker, b.color, b.size_lo, b.size_hi, b.frame, b.extras, b.descr, b.note, status, done, out, now, reserved, b.worker)
+        .bind(year, b.maker, b.color, b.size_lo, b.size_hi, b.frame, b.extras, b.descr, b.note, status, done, out, now, reserved, b.worker, b.kind)
         .first();
       return json({ bike: row(created) }, 201);
     }
@@ -360,7 +369,7 @@ async function api(request, env, url, role) {
 
     if (p === "/api/export.csv" && m === "GET") {
       const { results } = await env.DB.prepare("SELECT * FROM bikes ORDER BY year, seq").all();
-      const cols = ["nr", "status", "reserved", "worker", "maker", "color", "size_lo", "size_hi", "frame", "extras", "descr", "note", "done_at", "out_at"];
+      const cols = ["nr", "status", "reserved", "worker", "kind", "maker", "color", "size_lo", "size_hi", "frame", "extras", "descr", "note", "done_at", "out_at"];
       const esc = (v) => {
         const s = v == null ? "" : String(v);
         return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
