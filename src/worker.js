@@ -11,7 +11,7 @@ const STATUS = ["reparatur", "lager", "ausgegeben"];
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
 const MAX_PHOTOS = 4;
 // Startliste für "Wer schraubt?" (wird nur beim allerersten Mal angelegt, danach in der App erweiterbar)
-const START_NAMES = ["Alex", "Amin L", "Chris (Max)", "Daniel Winter", "Georg B.", "H", "Hami", "Hans", "Johanna", "Kristjan P", "Lars Attacks", "Levin", "Lina", "Malte Kisd", "Marie", "Marieke", "Moritz", "Norman", "Paul 8er", "Paulette", "Resa", "Rupert Turbo"];
+const START_NAMES = ["Alex", "Amin L", "Chris (Max)", "Daniel Winter", "Georg B.", "H", "Hami", "Hans", "Johanna", "Kristjan P", "Lars Attacks", "Levin", "Lina", "Malte Kisd", "Marie", "Marieke", "Moritz", "Norman", "Paul", "Paulette", "Resa", "Rupert Turbo"];
 
 // Ohne Login erreichbar: Login-Seite, Schriften, Logo, Icons, Manifest
 const PUBLIC_PATHS = [/^\/login$/, /^\/pub\//, /^\/manifest\.webmanifest$/, /^\/robots\.txt$/, /^\/api\/login$/];
