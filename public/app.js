@@ -100,7 +100,7 @@
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} } };
   const SHARE_ICON = `<svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Teilen-Knopf"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11v9h12v-9"/></svg>`;
   function installSteps() {
-    const ios = `<li><b>iPhone:</b> in <b>Safari</b> öffnen → unten ${SHARE_ICON} <b>Teilen</b> → runterscrollen → <b>„Zum Home-Bildschirm“</b> → Hinzufügen.</li>`;
+    const ios = `<li><b>iPhone:</b> unbedingt in <b>Safari</b> öffnen (nicht aus Signal heraus, nicht Chrome). Dann ${SHARE_ICON} <b>Teilen</b> antippen (bei neuem iOS erst unten rechts <b>„…“</b>, dann Teilen) → im Menü nach unten wischen oder <b>„Mehr“</b> → <b>„Zum Home-Bildschirm“</b> → Hinzufügen.</li>`;
     const android = `<li><b>Android:</b> in <b>Chrome</b> öffnen → oben rechts <b>⋮</b> → <b>„Zum Startbildschirm hinzufügen“</b> oder „App installieren“.</li>`;
     return `<ul class="install-steps">${isIOS ? ios + android : android + ios}</ul>`;
   }

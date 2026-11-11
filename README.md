@@ -41,7 +41,7 @@ Im Cloudflare-Dashboard, im selben Konto wie bikepacking.studio:
 
 ## Auf dem Handy
 
-Adresse öffnen, Werkstatt-Passwort eingeben, dann im Browser-Menü **„Zum Home-Bildschirm“** (iPhone: Teilen-Knopf → „Zum Home-Bildschirm“). Danach startet das Archiv wie eine App.
+Adresse öffnen, Werkstatt-Passwort eingeben, dann im Browser-Menü **„Zum Home-Bildschirm“**. iPhone: nur in Safari (nicht im Signal-Browser) → Teilen (neues iOS: erst „…“, dann Teilen) → nach unten wischen bzw. „Mehr“ → „Zum Home-Bildschirm“. Android/Chrome: ⋮ → „Zum Startbildschirm hinzufügen“. Die Anleitung steht auch in der App unter Statistik. Danach startet das Archiv wie eine App.
 
 ## Lokal testen
 
