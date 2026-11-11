@@ -11,7 +11,7 @@
   const ST_ORDER = ["reparatur", "lager", "ausgegeben"];
   const MAX_PHOTOS = 4;
 
-  const S = { view: "list", status: "lager", q: "", size: null, frame: null, cur: null, year: new Date().getFullYear(), confirmDel: false, draft: null, toast: "", toastErr: false, busy: false, role: "werkstatt", bikes: [] };
+  const S = { view: "list", status: "lager", q: "", size: null, frame: null, cur: null, year: new Date().getFullYear(), confirmDel: false, draft: null, toast: "", toastErr: false, busy: false, role: "werkstatt", bikes: [], people: [] };
   const app = document.getElementById("app");
 
   /* ---------- Hilfen ---------- */
@@ -69,7 +69,7 @@
       .filter((b) => !S.frame || b.frame === S.frame)
       .filter((b) => {
         if (!words.length) return true;
-        const t = [b.nr, b.maker, b.color, b.frame, b.descr, b.note, ...b.extras, size(b)].join(" ").toLowerCase();
+        const t = [b.nr, b.worker, b.maker, b.color, b.frame, b.descr, b.note, ...b.extras, size(b)].join(" ").toLowerCase();
         return words.every((w) => t.includes(w));
       });
   }
@@ -122,6 +122,7 @@
       <div class="eyebrow">#${esc(b.nr)} · ${b.status === "reparatur" ? "noch in Reparatur" : "fertig am " + (fmt(b.done_at) || "?")}</div>
       <h2 class="title-xl">${esc(title(b))}</h2>
       <dl class="kv">
+       ${row("Schraubt", esc(b.worker))}
        ${row("Hersteller", esc(b.maker))}
        ${row("Farbe", b.color ? `<span style="display:inline-flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:${COLORS[b.color] || "transparent"};border:1px solid var(--line)"></span>${esc(b.color)}</span>` : "")}
        ${row("Größe", esc(size(b)))}
@@ -146,8 +147,8 @@
   }
 
   function newDraft(b) {
-    if (b) return { id: b.id, nr: b.nr, maker: b.maker || "", color: b.color || "", lo: b.size_lo, hi: b.size_hi, frame: b.frame || "", extras: [...b.extras], descr: b.descr || "", note: b.note || "", status: b.status, done_at: b.done_at || todayISO(), photos: [...b.photos], removed: [], files: [] };
-    return { id: null, nr: "", maker: "", color: "", lo: null, hi: null, frame: "", extras: [], descr: "", note: "", status: "lager", done_at: todayISO(), photos: [], removed: [], files: [] };
+    if (b) return { id: b.id, nr: b.nr, maker: b.maker || "", color: b.color || "", lo: b.size_lo, hi: b.size_hi, frame: b.frame || "", worker: b.worker || "", extras: [...b.extras], descr: b.descr || "", note: b.note || "", status: b.status, done_at: b.done_at || todayISO(), photos: [...b.photos], removed: [], files: [] };
+    return { id: null, nr: "", maker: "", color: "", lo: null, hi: null, frame: "", worker: "", extras: [], descr: "", note: "", status: "lager", done_at: todayISO(), photos: [], removed: [], files: [] };
   }
 
   function vForm() {
@@ -172,6 +173,14 @@
           <input id="photo" type="file" accept="image/*" ${nPhotos ? "" : 'capture="environment"'} aria-label="Foto hinzufügen"></div>` : ""}
        </div>
        <span class="hint">Fotos werden vor dem Hochladen verkleinert.</span>
+      </div>
+      <div class="field"><label for="worker">Wer schraubt? <span>optional</span></label>
+       <select id="worker">
+        <option value="">– niemand eingetragen –</option>
+        ${[...new Set([...S.people, ...(d.worker ? [d.worker] : [])])].sort((a, b) => a.localeCompare(b, "de")).map((n) => `<option ${d.worker === n ? "selected" : ""}>${esc(n)}</option>`).join("")}
+        <option value="__neu">+ Neuen Namen hinzufügen …</option>
+       </select>
+       ${d.addingPerson ? `<div class="addown"><input id="newperson" type="text" placeholder="Name" maxlength="60" autocomplete="off"><button type="button" data-addperson>Hinzufügen</button></div>` : ""}
       </div>
       <div class="field"><label for="maker">Hersteller <span>optional</span></label>
        <input id="maker" type="text" list="makers" value="${esc(d.maker)}" placeholder="z. B. Winora" autocomplete="off" maxlength="60">
@@ -257,7 +266,7 @@
   async function save() {
     readForm();
     const d = S.draft;
-    const data = { maker: d.maker, color: d.color, size_lo: d.lo, size_hi: d.hi, frame: d.frame, extras: d.extras, descr: d.descr, note: d.note };
+    const data = { worker: d.worker, maker: d.maker, color: d.color, size_lo: d.lo, size_hi: d.hi, frame: d.frame, extras: d.extras, descr: d.descr, note: d.note };
     if (d.status !== "reparatur") data.done_at = d.done_at || todayISO();
     if (!d.id) data.status = d.status;
     S.busy = true; render(true);
@@ -300,6 +309,18 @@
       .then(() => { const el = document.getElementById("resnote"); if (el) el.focus(); });
   }
 
+  async function addPerson() {
+    const el = document.getElementById("newperson"); const name = el ? el.value.trim() : "";
+    if (!name) { toast("Bitte einen Namen eingeben.", true); return; }
+    readForm();
+    try {
+      const d = await sendJSON("/api/people", "POST", { name });
+      S.people = d.people;
+      S.draft.worker = S.people.find((n) => n.toLowerCase() === name.toLowerCase()) || name;
+      S.draft.addingPerson = false; render(true); toast(`${S.draft.worker} hinzugefügt`);
+    } catch (e) { toast(e.message, true); }
+  }
+
   async function del() {
     const b = byId(S.cur); if (!b) return;
     try {
@@ -331,6 +352,11 @@
       } catch (err) { toast("Foto konnte nicht gelesen werden.", true); }
     }
     if (t.id === "resnote") { const b = byId(S.cur); if (b && t.value.trim() !== (b.note || "")) patch({ note: t.value.trim() }, (x) => `#${x.nr}: Notiz gespeichert`); }
+    if (t.id === "worker") {
+      readForm();
+      if (t.value === "__neu") { S.draft.addingPerson = true; render(true); const el = document.getElementById("newperson"); if (el) el.focus(); }
+      else { S.draft.worker = t.value; S.draft.addingPerson = false; }
+    }
     if (t.id === "nosize") {
       document.getElementById("sizebox").hidden = t.checked;
       if (t.checked) { S.draft.lo = null; S.draft.hi = null; }
@@ -338,6 +364,7 @@
     }
   });
   app.addEventListener("keydown", (e) => {
+    if (e.target.id === "newperson" && e.key === "Enter") { e.preventDefault(); app.querySelector("[data-addperson]").click(); }
     if (e.target.id === "ownextra" && e.key === "Enter") { e.preventDefault(); app.querySelector("[data-addextra]").click(); }
   });
   app.addEventListener("click", (e) => {
@@ -358,6 +385,7 @@
     if (ds.color) { readForm(); S.draft.color = S.draft.color === ds.color ? "" : ds.color; render(true); }
     if (ds.fframe) { readForm(); S.draft.frame = S.draft.frame === ds.fframe ? "" : ds.fframe; render(true); }
     if (ds.extra) { readForm(); const x = S.draft.extras, i = x.indexOf(ds.extra); i < 0 ? x.push(ds.extra) : x.splice(i, 1); render(true); }
+    if ("addperson" in ds) addPerson();
     if ("addextra" in ds) { const v = document.getElementById("ownextra").value.trim(); readForm(); if (v && !S.draft.extras.includes(v)) S.draft.extras.push(v); render(true); }
     if (ds.rmphoto) { readForm(); S.draft.photos = S.draft.photos.filter((k) => k !== ds.rmphoto); S.draft.removed.push(ds.rmphoto); render(true); }
     if (ds.rmfile) { readForm(); S.draft.files.splice(+ds.rmfile, 1); render(true); }
@@ -368,8 +396,8 @@
   /* ---------- Start ---------- */
   (async function start() {
     try {
-      const [me, data] = await Promise.all([api("/api/me"), api("/api/bikes")]);
-      S.role = me.role; S.bikes = data.bikes;
+      const [me, data, ppl] = await Promise.all([api("/api/me"), api("/api/bikes"), api("/api/people")]);
+      S.role = me.role; S.bikes = data.bikes; S.people = ppl.people;
       render();
     } catch (e) {
       app.innerHTML = `<div class="loading">${esc(e.message)}</div>`;

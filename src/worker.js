@@ -10,6 +10,8 @@ const SESSION_DAYS = 90;
 const STATUS = ["reparatur", "lager", "ausgegeben"];
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
 const MAX_PHOTOS = 4;
+// Startliste für "Wer schraubt?" (wird nur beim allerersten Mal angelegt, danach in der App erweiterbar)
+const START_NAMES = ["Alex", "Amin L", "Chris (Max)", "Daniel Winter", "Georg B.", "H", "Hami", "Hans", "Johanna", "Kristjan P", "Lars Attacks", "Levin", "Lina", "Malte Kisd", "Marie", "Marieke", "Moritz", "Norman", "Paul 8er", "Paulette", "Resa", "Rupert Turbo"];
 
 // Ohne Login erreichbar: Login-Seite, Schriften, Logo, Icons, Manifest
 const PUBLIC_PATHS = [/^\/login$/, /^\/pub\//, /^\/manifest\.webmanifest$/, /^\/robots\.txt$/, /^\/api\/login$/];
@@ -168,6 +170,14 @@ async function ensureSchema(env) {
       env.DB.prepare("UPDATE bikes SET status = 'lager', reserved = 1 WHERE status = 'reserviert'"),
     ]);
   }
+  if (!results.some((c) => c.name === "worker")) {
+    await env.DB.prepare("ALTER TABLE bikes ADD COLUMN worker TEXT").run();
+  }
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE)").run();
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM people").first();
+  if (!n.n) {
+    await env.DB.batch(START_NAMES.map((name) => env.DB.prepare("INSERT OR IGNORE INTO people (name) VALUES (?)").bind(name)));
+  }
   schemaReady = true;
 }
 
@@ -186,6 +196,7 @@ function clean(input, partial) {
   if (!partial || has("maker")) out.maker = clip(input.maker, 60);
   if (!partial || has("color")) out.color = clip(input.color, 30);
   if (!partial || has("frame")) out.frame = clip(input.frame, 30);
+  if (!partial || has("worker")) out.worker = clip(input.worker, 60);
   if (!partial || has("descr")) out.descr = clip(input.descr, 2000);
   if (!partial || has("note")) out.note = clip(input.note, 300);
   if (!partial || has("size_lo") || has("size_hi")) {
@@ -223,8 +234,28 @@ function row(b) {
 async function api(request, env, url, role) {
   const m = request.method;
   const p = url.pathname;
+  let mmPeople;
   try {
     if (p === "/api/me" && m === "GET") return json({ role });
+
+    if (p === "/api/people" && m === "GET") {
+      const { results } = await env.DB.prepare("SELECT name FROM people ORDER BY name COLLATE NOCASE").all();
+      return json({ people: results.map((r) => r.name) });
+    }
+    if (p === "/api/people" && m === "POST") {
+      const body = await request.json();
+      const name = clip(body.name, 60);
+      if (!name) throw new HttpError(400, "Bitte einen Namen eingeben.");
+      await env.DB.prepare("INSERT OR IGNORE INTO people (name) VALUES (?)").bind(name).run();
+      const { results } = await env.DB.prepare("SELECT name FROM people ORDER BY name COLLATE NOCASE").all();
+      return json({ people: results.map((r) => r.name) }, 201);
+    }
+    mmPeople = p.match(/^\/api\/people\/(.+)$/);
+    if (mmPeople && m === "DELETE") {
+      if (role !== "admin") throw new HttpError(403, "Namen entfernen dürfen nur Admins.");
+      await env.DB.prepare("DELETE FROM people WHERE name = ?").bind(decodeURIComponent(mmPeople[1])).run();
+      return json({ ok: true });
+    }
 
     if (p === "/api/bikes" && m === "GET") {
       const { results } = await env.DB.prepare(
@@ -244,13 +275,13 @@ async function api(request, env, url, role) {
       const now = new Date().toISOString();
       // Nummer = Jahr + laufende Nummer, in einer Anweisung vergeben (kein Doppelvergeben)
       const created = await env.DB.prepare(
-        `INSERT INTO bikes (year, seq, nr, maker, color, size_lo, size_hi, frame, extras, descr, note, status, done_at, out_at, created_at, updated_at, reserved)
+        `INSERT INTO bikes (year, seq, nr, maker, color, size_lo, size_hi, frame, extras, descr, note, status, done_at, out_at, created_at, updated_at, reserved, worker)
          SELECT ?1, COALESCE(MAX(seq), 0) + 1, printf('%02d-%03d', ?1 % 100, COALESCE(MAX(seq), 0) + 1),
-                ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13, ?14
+                ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13, ?14, ?15
          FROM bikes WHERE year = ?1
          RETURNING *`
       )
-        .bind(year, b.maker, b.color, b.size_lo, b.size_hi, b.frame, b.extras, b.descr, b.note, status, done, out, now, reserved)
+        .bind(year, b.maker, b.color, b.size_lo, b.size_hi, b.frame, b.extras, b.descr, b.note, status, done, out, now, reserved, b.worker)
         .first();
       return json({ bike: row(created) }, 201);
     }
@@ -329,7 +360,7 @@ async function api(request, env, url, role) {
 
     if (p === "/api/export.csv" && m === "GET") {
       const { results } = await env.DB.prepare("SELECT * FROM bikes ORDER BY year, seq").all();
-      const cols = ["nr", "status", "reserved", "maker", "color", "size_lo", "size_hi", "frame", "extras", "descr", "note", "done_at", "out_at"];
+      const cols = ["nr", "status", "reserved", "worker", "maker", "color", "size_lo", "size_hi", "frame", "extras", "descr", "note", "done_at", "out_at"];
       const esc = (v) => {
         const s = v == null ? "" : String(v);
         return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

@@ -118,7 +118,7 @@ body.login-body{background:var(--black)}
 /* Formular */
 .field{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
 .field>label,.field>.lbl{font-family:var(--f-mono);font-size:12px;letter-spacing:.04em;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
-.field input[type=text],.field input[type=date],.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--paper);font-size:16px}
+.field input[type=text],.field input[type=date],.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--paper);font-size:16px}
 .field textarea{min-height:80px;resize:vertical}
 .photos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .ph{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--soft)}
