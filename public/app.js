@@ -65,7 +65,7 @@
   }
   const thumb = (b) => (b.photos.length ? `<img src="${fotoUrl(b.photos[0])}" alt="" loading="lazy">` : bikeSvg(b.color));
   // Störer: Rad ist reserviert
-  const stoerer = (b, big) => (b.reserved && b.status !== "ausgegeben" ? `<span class="stoerer${big ? " big" : ""}" title="${esc(b.note || "Reserviert")}">Reser&shy;viert</span>` : "");
+  const stoerer = (b, big) => (b.reserved && b.status !== "ausgegeben" ? `<span class="stoerer${big ? " big" : ""}" title="${esc(b.note || "Reserviert")}">Reserviert</span>` : "");
 
   /* ---------- Filter ---------- */
   function filtered() {

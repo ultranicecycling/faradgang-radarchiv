@@ -168,12 +168,13 @@ body.login-body{background:var(--black)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 
 /* Störer: Reserviert */
-.stoerer{position:absolute;right:6px;top:6px;width:58px;height:58px;border-radius:50%;background:var(--amber);color:var(--amber-ink);display:grid;place-items:center;text-align:center;
-  font-weight:800;font-size:10.5px;line-height:1.05;letter-spacing:.02em;text-transform:uppercase;transform:rotate(12deg);box-shadow:0 2px 6px rgba(0,0,0,.25);padding:4px;hyphens:manual}
-.stoerer.big{width:86px;height:86px;font-size:14px;right:14px;top:14px}
+.stoerer{position:absolute;right:7px;top:9px;transform:rotate(-10deg);pointer-events:none;
+  background:#d7262b;color:#fff;font-weight:900;font-size:10px;line-height:1;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;
+  padding:5px 7px;border-radius:2px;box-shadow:inset 0 0 0 1.5px #d7262b,inset 0 0 0 2.5px #fff,0 1px 4px rgba(0,0,0,.2)}
+.stoerer.big{font-size:15px;padding:8px 11px;right:14px;top:16px;box-shadow:inset 0 0 0 2px #d7262b,inset 0 0 0 3.5px #fff,0 2px 6px rgba(0,0,0,.2)}
 .hero-wrap{position:relative}
 .reserve{margin-top:10px;display:flex;flex-direction:column;gap:6px}
-.resbtn{border:2px dashed var(--amber);background:transparent;border-radius:12px;padding:12px;font-weight:700;font-size:14px;color:var(--ink)}
+.resbtn{border:2px dashed #d7262b;background:transparent;border-radius:12px;padding:12px;font-weight:700;font-size:14px;color:var(--ink)}
 .resbtn[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink);border-style:solid}
 .reserve input{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--paper);font-size:16px}
 .seg button{font-size:12.5px}
