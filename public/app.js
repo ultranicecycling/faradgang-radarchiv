@@ -178,7 +178,7 @@
        <div class="addown"><input id="ownextra" type="text" placeholder="Eigenes Extra, z. B. Federgabel" maxlength="40"><button type="button" data-addextra>Hinzufügen</button></div></div>
       <div class="field"><label for="descr">Beschreibung <span>optional</span></label>
        <textarea id="descr" placeholder="Was wurde gemacht, Besonderheiten …" maxlength="2000">${esc(d.descr)}</textarea></div>
-      <div class="field"><label for="note">Notiz <span>z. B. „reserviert für Freitag“</span></label>
+      <div class="field"><label for="note">Notiz <span>z. B. „reserviert für Montag“</span></label>
        <input id="note" type="text" value="${esc(d.note)}" maxlength="300"></div>
       <div class="field" style="border-bottom:0"><label for="done_at">Fertig repariert am</label>
        <input id="done_at" type="date" value="${esc(d.done_at)}"></div>
